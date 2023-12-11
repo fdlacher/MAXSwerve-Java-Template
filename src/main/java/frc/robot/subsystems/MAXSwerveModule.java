@@ -12,6 +12,7 @@ import com.revrobotics.CANSparkMax;
 import com.revrobotics.CANSparkMaxLowLevel.MotorType;
 import com.revrobotics.SparkMaxAbsoluteEncoder.Type;
 import com.revrobotics.SparkMaxPIDController;
+import com.revrobotics.CANSparkMax.FaultID;
 import com.revrobotics.AbsoluteEncoder;
 import com.revrobotics.RelativeEncoder;
 
@@ -65,7 +66,8 @@ public class MAXSwerveModule {
     m_turningEncoder.setPositionConversionFactor(ModuleConstants.kTurningEncoderPositionFactor);
     m_turningEncoder.setVelocityConversionFactor(ModuleConstants.kTurningEncoderVelocityFactor);
 
-    // Invert the turning encoder, since the output shaft rotates in the opposite direction of
+    // Invert the turning encoder, since the output shaft rotates in the opposite
+    // direction of
     // the steering motor in the MAXSwerve Module.
     m_turningEncoder.setInverted(ModuleConstants.kTurningEncoderInverted);
 
@@ -77,7 +79,8 @@ public class MAXSwerveModule {
     m_turningPIDController.setPositionPIDWrappingMinInput(ModuleConstants.kTurningEncoderPositionPIDMinInput);
     m_turningPIDController.setPositionPIDWrappingMaxInput(ModuleConstants.kTurningEncoderPositionPIDMaxInput);
 
-    // Set the PID gains for the driving motor. Note these are example gains, and you
+    // Set the PID gains for the driving motor. Note these are example gains, and
+    // you
     // may need to tune them for your own robot!
     m_drivingPIDController.setP(ModuleConstants.kDrivingP);
     m_drivingPIDController.setI(ModuleConstants.kDrivingI);
@@ -86,7 +89,8 @@ public class MAXSwerveModule {
     m_drivingPIDController.setOutputRange(ModuleConstants.kDrivingMinOutput,
         ModuleConstants.kDrivingMaxOutput);
 
-    // Set the PID gains for the turning motor. Note these are example gains, and you
+    // Set the PID gains for the turning motor. Note these are example gains, and
+    // you
     // may need to tune them for your own robot!
     m_turningPIDController.setP(ModuleConstants.kTurningP);
     m_turningPIDController.setI(ModuleConstants.kTurningI);
@@ -161,4 +165,63 @@ public class MAXSwerveModule {
   public void resetEncoders() {
     m_drivingEncoder.setPosition(0);
   }
+
+  public class Faults {
+    public boolean hasReset;
+    public boolean brownout;
+    public boolean overCurrent;
+    public boolean stall;
+    public boolean canRxFault;
+    public boolean canTxFault;
+    public boolean eepromFault;
+    public boolean motorFault;
+    public boolean sensorFault;
+    public boolean gateDriverFault;
+    public boolean iwdtReset;
+  };
+
+  public Faults getDrivingSparkFaults(boolean sticky) {
+    Faults faults = new Faults();
+
+    short faultBits = sticky ? m_drivingSparkMax.getStickyFaults() : m_drivingSparkMax.getFaults();
+
+    faults.hasReset = ((faultBits >> FaultID.kHasReset.value) & 1) == 1;
+    faults.brownout = ((faultBits >> FaultID.kBrownout.value) & 1) == 1;
+    faults.overCurrent = ((faultBits >> FaultID.kOvercurrent.value) & 1) == 1;
+    faults.stall = ((faultBits >> FaultID.kStall.value) & 1) == 1;
+    faults.canTxFault = ((faultBits >> FaultID.kCANTX.value) & 1) == 1;
+    faults.canRxFault = ((faultBits >> FaultID.kCANRX.value) & 1) == 1;
+    faults.eepromFault = ((faultBits >> FaultID.kEEPROMCRC.value) & 1) == 1;
+
+    faults.motorFault = ((faultBits >> FaultID.kMotorFault.value) & 1) == 1;
+    faults.sensorFault = ((faultBits >> FaultID.kSensorFault.value) & 1) == 1;
+    faults.gateDriverFault = ((faultBits >> FaultID.kDRVFault.value) & 1) == 1;
+    faults.iwdtReset = ((faultBits >> FaultID.kIWDTReset.value) & 1) == 1;
+
+    return faults;
+  }
+
+  public double getInputVoltage() {
+    return m_drivingSparkMax.getBusVoltage();
+  }
+
+  public double getOutputCurrent() {
+    return m_drivingSparkMax.getOutputCurrent();
+  }
+
+  public double getTemperature() {
+    return m_drivingSparkMax.getMotorTemperature();
+  }
+
+  public void clearStickyFaults() {
+    m_drivingSparkMax.clearFaults();
+  }
+
+  // @Override
+  // public void initSendable(SendableBuilder builder) {
+  //   builder.setSmartDashboardType("Swerve Module");
+  //   builder.addDoubleProperty("inputVoltage", this::getInputVoltage, null);
+  //   builder.addDoubleProperty("outputCurrent", this::getOutputCurrent, null);
+  //   builder.addDoubleProperty("temperature", this::getTemperature, null);
+  // }
 }
